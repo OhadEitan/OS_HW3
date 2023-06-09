@@ -1,7 +1,12 @@
 #include "segel.h"
 #include "request.h"
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <pthread.h>
 
-// 
+#define SIZE_OF_SCHED_ALG 7
+//
 // server.c: A very, very simple web server
 //
 // To run:
@@ -11,41 +16,64 @@
 // Most of the work is done within routines written in request.c
 //
 
+Queue* requests_waiting_to_be_picked;
+Queue* requests_currently_handled;
+
+
 // HW3: Parse the new arguments too
-void getargs(int *port, int argc, char *argv[])
+void getargs(int *port, int* threads_amount, int* queue_size, char* sched_algorithm, int* max_size, int argc, char *argv[])
 {
     if (argc < 2) {
-	fprintf(stderr, "Usage: %s <port>\n", argv[0]);
-	exit(1);
+        fprintf(stderr, "Usage: %s <port>\n", argv[0]);
+        exit(1);
     }
     *port = atoi(argv[1]);
+    *threads_amount = atoi(argv[2]);
+    *queue_size = atoi(argv[3]);
+    strcpy(sched_algorithm,argv[4]);
+    *max_size = INT_MAX; //TODO: max size need to be different then 0 if sched_algorithm is dynamic, maybe no need to init it here
+}
+
+void* threadRoutine(void* thread_index){
+    int index = *(int*)thread_index;
+
 }
 
 
 int main(int argc, char *argv[])
 {
-    int listenfd, connfd, port, clientlen;
+    int listenfd, connfd, port, clientlen, threads_amount,queue_size,max_size;
     struct sockaddr_in clientaddr;
+    char sched_algorithm[SIZE_OF_SCHED_ALG];
+    getargs(&port,&threads_amount, &queue_size, sched_algorithm, &max_size, argc, argv);
 
-    getargs(&port, argc, argv);
+    //create the requests queue
+    requests_waiting_to_be_picked = malloc(sizeof(Queue));
+    requests_currently_handled = malloc(sizeof(Queue));
 
-    // 
+    initQueue(requests_queue);
+
+    //
     // HW3: Create some threads...
     //
+    pthread_t* threads = malloc(sizeof (pthread_t) * threads_amount);
+    for(int i=0;i<threads_amount;i++){
+        pthread_create(&threads[i],NULL,threadRoutine,&i);
+    }
 
     listenfd = Open_listenfd(port);
     while (1) {
-	clientlen = sizeof(clientaddr);
-	connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
+        clientlen = sizeof(clientaddr);
+        connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
 
-	// 
-	// HW3: In general, don't handle the request in the main thread.
-	// Save the relevant info in a buffer and have one of the worker threads 
-	// do the work. 
-	// 
-	requestHandle(connfd);
+        //
+        // HW3: In general, don't handle the request in the main thread.
+        // Save the relevant info in a buffer and have one of the worker threads
+        // do the work.
+        //
+        requestHandle(connfd);
 
-	Close(connfd);
+        Close(connfd);
     }
 
 }
