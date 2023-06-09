@@ -16,8 +16,7 @@
 // Most of the work is done within routines written in request.c
 //
 
-Queue* requests_waiting_to_be_picked;
-Queue* requests_currently_handled;
+
 
 
 // HW3: Parse the new arguments too
@@ -39,6 +38,21 @@ void* threadRoutine(void* thread_index){
 
 }
 
+void policy_block(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled
+                  int* queue_size, int* max_size){
+    if (requests_waiting_to_be_picked->num_of_elements == queue_size)
+    {
+        // do nothing
+    }
+    else {
+
+    }
+
+
+
+}
+
+
 
 int main(int argc, char *argv[])
 {
@@ -48,10 +62,14 @@ int main(int argc, char *argv[])
     getargs(&port,&threads_amount, &queue_size, sched_algorithm, &max_size, argc, argv);
 
     //create the requests queue
-    requests_waiting_to_be_picked = malloc(sizeof(Queue));
-    requests_currently_handled = malloc(sizeof(Queue));
+    //requests_waiting_to_be_picked = malloc(sizeof(Queue));
+   // requests_currently_handled = malloc(sizeof(Queue));
+    Queue requests_waiting_to_be_picked;
+    Queue requests_currently_handled;
 
-    initQueue(requests_queue);
+    initQueue(&requests_waiting_to_be_picked);
+    initQueue(&requests_currently_handled);
+
 
     //
     // HW3: Create some threads...
