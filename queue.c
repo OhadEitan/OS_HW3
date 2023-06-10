@@ -49,7 +49,7 @@ void insertToQueue(Queue *q1, int new_elem) {
 }
 
 
-// Remove node
+// Remove node from
 int removeFromQueue(Queue *q1) {
     int to_return;
     if (q1->head == NULL) {

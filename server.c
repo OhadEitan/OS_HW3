@@ -30,27 +30,46 @@ void getargs(int *port, int* threads_amount, int* queue_size, char* sched_algori
     *threads_amount = atoi(argv[2]);
     *queue_size = atoi(argv[3]);
     strcpy(sched_algorithm,argv[4]);
-    *max_size = INT_MAX; //TODO: max size need to be different then 0 if sched_algorithm is dynamic, maybe no need to init it here
+    if(argc > 4) { //only in the case of dynamic sched algorithm
+        *max_size = atoi(argv[5]);
+    }
 }
+
+pthread_mutex_t m;
 
 void* threadRoutine(void* thread_index){
     int index = *(int*)thread_index;
+    while(1){
+        pthread_mutex_lock(&m);
+        while
+    }
 
 }
 
 void policy_block(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled
-                  int* queue_size, int* max_size){
-    if (requests_waiting_to_be_picked->num_of_elements == queue_size)
+                  int* queue_size, int* request{
+    if (requests_waiting_to_be_picked->num_of_elements +
+                requests_currently_handled->num_of_elements == queue_size)
     {
-        // do nothing
+        // Do nothing
+        ;
     }
     else {
-
+        requests_waiting_to_be_picked.enque(request);
     }
+}
 
+void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled
+                  int* queue_size, int* request{
+    requests_currently_handled.dequeue();
+    requests_waiting_to_be_picked.enque(request);
+}
 
+void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled
+                      int* queue_size, int* request{
 
 }
+
 
 
 
@@ -64,11 +83,12 @@ int main(int argc, char *argv[])
     //create the requests queue
     //requests_waiting_to_be_picked = malloc(sizeof(Queue));
    // requests_currently_handled = malloc(sizeof(Queue));
-    Queue requests_waiting_to_be_picked;
-    Queue requests_currently_handled;
+    Queue* requests_waiting_to_be_picked;
+    Queue* requests_currently_handled;
 
-    initQueue(&requests_waiting_to_be_picked);
-    initQueue(&requests_currently_handled);
+    initQueue(requests_waiting_to_be_picked);
+    initQueue(requests_currently_handled);
+    pthread_mutex_init(&m,NULL);
 
 
     //
