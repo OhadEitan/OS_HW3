@@ -7,6 +7,7 @@
 #include <pthread.h>
 
 #define SIZE_OF_SCHED_ALG 7
+# define FD_IS_NOT_VALID -999
 //
 // server.c: A very, very simple web server
 //
@@ -40,7 +41,6 @@ pthread_mutex_t m;
 pthread_cond_t c_;
 Queue* requests_waiting_to_be_picked;
 Queue* requests_currently_handled;
-int current_running_requests;
 
 
 _Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beginning of this declaration
@@ -55,49 +55,78 @@ _Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn 
         Node* request_to_handle = requests_waiting_to_be_picked->head;
         dequeueHead(requests_waiting_to_be_picked);
         int fd_req_to_handle = request_to_handle->fd;
-        enqueue(requests_currently_handled,fd_req_to_handle);
+        if(fd_req_to_handle != FD_IS_NOT_VALID){
+            enqueue(requests_currently_handled,fd_req_to_handle);
+        }
 
         //handle the request
         pthread_mutex_unlock(&m);
         requestHandle(fd_req_to_handle);
         close(fd_req_to_handle);
+
+        //request handling is finished
+        pthread_mutex_lock(&m);
+        dequeueHead(requests_currently_handled); //remove the finished request
+        pthread_mutex_unlock(&m);
     }
 }
 
 void policy_block(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
-                  int* queue_size, int* request){
-    if (requests_waiting_to_be_picked->num_of_elements +
-        requests_currently_handled->num_of_elements == (*queue_size))
-    {
-        // Do nothing
-        ;
-    }
-    else {
-        enqueue(requests_waiting_to_be_picked,*request);
-    }
+                  int* queue_size, int* request)
+{
+    // Do nothing
+    return;
 }
 
 void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                       int* queue_size, int* request){
+    // TODO this policy isnt good I think
     dequeueTail(requests_currently_handled);
     enqueue(requests_waiting_to_be_picked, request);
+    return;
 }
 
 void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                       int* queue_size, int* request){
-    dequeueHead(requests_waiting_to_be_picked);
 
+    if (requests_currently_handled->num_of_elements != 0)
+    {
+            return;
+    }
+    else {
+        //// TODO the case where waiting is full and handle isn't cover here, what should we do , or maybe
+        //// the implementation of this case is in handle function
+    }
+}
+
+void policy_dynamic(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
+                        int* queue_size, int* request, int max_size)
+{
+    if ((*queue_size) == max_size)
+    {
+        policy_drop_tail(&requests_waiting_to_be_picked, &requests_currently_handled, &queue_size, &request);
+        return;
+    }
+    else
+    {
+        (*queue_size)++;
+        (*request) = FD_IS_NOT_VALID;
+        return;
+
+    }
 }
 
 
 void policy_drop_random(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
-                      int* queue_size, int* request)
-    {
-    int fifty_precent = ((*queue_size) /2) ;
+                        int* queue_size, int* request)
+{
+    int fifty_precent = ((*queue_size) / 2);
     for (int i = 0; i < fifty_precent; ++i) {
         dequeueRandom(requests_waiting_to_be_picked);
     }
-
+    //TODO should I should entere the new request now or just drop 50%
+    return;
+    }
 }
 
 int main(int argc, char *argv[])
@@ -105,7 +134,6 @@ int main(int argc, char *argv[])
     int listenfd, connfd, port, clientlen, threads_amount,queue_size,max_size;
     struct sockaddr_in clientaddr;
     char sched_algorithm[SIZE_OF_SCHED_ALG];
-    current_running_requests = 0;
     getargs(&port,&threads_amount, &queue_size, sched_algorithm, &max_size, argc, argv);
 
     //create the requests queue
@@ -135,8 +163,32 @@ int main(int argc, char *argv[])
         // Save the relevant info in a buffer and have one of the worker threads
         // do the work.
         //
-        requestHandle(connfd);
+        if(requests_currently_handled->num_of_elements >= queue_size){
+            //need to activate the relavant overload handling policy
+            if(strcmp(sched_algorithm,"block") == 0){
+                policy_block(requests_waiting_to_be_picked,requests_currently_handled, &queue_size, &connfd);
+            }
+            else if(strcmp(sched_algorithm,"dt") == 0){
+                policy_drop_tail(requests_waiting_to_be_picked,requests_currently_handled,&queue_size, &connfd);
+            }
+            else if(strcmp(sched_algorithm,"dh") == 0){
+                policy_drop_head(requests_waiting_to_be_picked,requests_currently_handled,&queue_size, &connfd);
+            }
+            else if(strcmp(sched_algorithm,"bf") == 0){
 
+            }
+            else if(strcmp(sched_algorithm,"dynamic") == 0){
+                policy_dynamic(requests_waiting_to_be_picked,requests_currently_handled,&queue_size, &connfd, max_size);
+            }
+            else if(strcmp(sched_algorithm,"random") == 0){
+                policy_drop_random(requests_waiting_to_be_picked,requests_currently_handled,&queue_size, &connfd);
+            }
+            else{
+                printf("error while choosing the overload policy\n");
+            }
+        }
+
+        requestHandle(connfd);
         Close(connfd);
     }
 
