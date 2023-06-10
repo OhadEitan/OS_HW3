@@ -2,9 +2,10 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdbool.h>
+#include <pthread.h>
 
-cond_t c; // like in tutorial
-mutex_t m; // like in tutorial
+pthread_cond_t c; // like in tutorial
+pthread_mutex_t m; // like in tutorial
 
 typedef struct node {
     int fd;
@@ -49,8 +50,8 @@ void insertToQueue(Queue *q1, int new_elem) {
 }
 
 
-// Remove node from
-int removeFromQueue(Queue *q1) {
+// Remove node from head
+int removeHeadFromQueue(Queue *q1) {
     int to_return;
     if (q1->head == NULL) {
         // queue is empty
@@ -61,10 +62,29 @@ int removeFromQueue(Queue *q1) {
     q1->head = q1->head->next;
     q1->num_of_elements--;
     if (q1->head == NULL) {
-       // after remove queue should be empty
+        // after remove queue should be empty
         q1->tail = NULL;
     }
     free(temp);
+    return to_return;
+}
+
+
+// Remove node from tail
+int removeTailFromQueue(Queue *q1) {
+    int to_return;
+    if (q1->tail == NULL) {
+        // queue is empty
+        return -1;
+    }
+    Node *temp = q1->head;
+
+    }
+
+    free(temp);
+    Node *to_delete = temp->next;
+    free(to_delete);
+    temp->next = NULL;
     return to_return;
 }
 
@@ -138,30 +158,30 @@ void deleteQueue(Queue *q1) {
 
 
 void enqueue(Queue *q1, int new_elem) {
-    mutex_lock(&m);
+    pthread_mutex_lock(&m);
     //add x to tail
-    insertToQueue(q1,new_elem)
-    cond_signal(&c);
-    mutex_unlock(&m);
+    insertToQueue(q1,new_elem);
+    pthread_cond_signal(&c);
+    pthread_mutex_unlock(&m);
 }
 
 int dequeue(Queue *q1) {
     int to_return;
-    mutex_lock(&m);
+    pthread_mutex_lock(&m);
     while (q1->num_of_elements == 0) {
-        cond_wait(&c, &m);
+        pthread_cond_wait(&c, &m);
     }
-    to_return = removeFromQueue(q1);
-    mutex_unlock(&m);
+    to_return = removeTailFromQueue(q1);
+    pthread_mutex_unlock(&m);
     return  to_return;
 }
 
 
 
-int main() {
-
-    return 0;
-}
+//int main() {
+//
+//    return 0;
+//}
 
 
 
