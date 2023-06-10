@@ -40,6 +40,7 @@ pthread_mutex_t m;
 pthread_cond_t c_;
 Queue* requests_waiting_to_be_picked;
 Queue* requests_currently_handled;
+int current_running_requests;
 
 
 _Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beginning of this declaration
@@ -104,6 +105,7 @@ int main(int argc, char *argv[])
     int listenfd, connfd, port, clientlen, threads_amount,queue_size,max_size;
     struct sockaddr_in clientaddr;
     char sched_algorithm[SIZE_OF_SCHED_ALG];
+    current_running_requests = 0;
     getargs(&port,&threads_amount, &queue_size, sched_algorithm, &max_size, argc, argv);
 
     //create the requests queue
