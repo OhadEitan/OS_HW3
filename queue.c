@@ -78,15 +78,44 @@ int removeTailFromQueue(Queue *q1) {
         return -1;
     }
     Node *temp = q1->head;
-
+    while (temp->next != q1->tail)
+    {
+        temp = temp->next;
     }
-
-    free(temp);
+    to_return = temp->next->fd;
     Node *to_delete = temp->next;
     free(to_delete);
     temp->next = NULL;
+    q1->tail = temp;
     return to_return;
 }
+
+
+
+int removeRandom(Queue *q1) {
+    int to_return;
+    int random_num = rand() % (q1->num_of_elements + 1);
+    if (0 == random_num)
+    {
+        return removeHeadFromQueue(q1);
+    }
+    if (q1->num_of_elements == random_num)
+    {
+        return removeTailFromQueue(q1);
+    }
+    Node *temp = q1->head;
+    Node *prev = NULL;
+    for (int i = 0; i < random_num-1 ; ++i) {
+        temp = temp->next;
+    }
+    to_return = temp->next->fd;
+    prev = temp;
+    temp = temp->next;
+    prev->next = prev->next->next;
+    free(temp);
+    return to_return;
+}
+
 
 // display
 void display(Queue *q1) {
@@ -165,7 +194,21 @@ void enqueue(Queue *q1, int new_elem) {
     pthread_mutex_unlock(&m);
 }
 
-int dequeue(Queue *q1) {
+int dequeueHead(Queue *q1) {
+    int to_return;
+    pthread_mutex_lock(&m);
+    while (q1->num_of_elements == 0) {
+        pthread_cond_wait(&c, &m);
+    }
+    to_return = removeHeadFromQueue(q1);
+    pthread_mutex_unlock(&m);
+    return  to_return;
+}
+
+
+
+
+int dequeueTail(Queue *q1) {
     int to_return;
     pthread_mutex_lock(&m);
     while (q1->num_of_elements == 0) {
@@ -176,6 +219,17 @@ int dequeue(Queue *q1) {
     return  to_return;
 }
 
+
+int dequeueRandom(Queue *q1) {
+    int to_return;
+    pthread_mutex_lock(&m);
+    while (q1->num_of_elements == 0) {
+        pthread_cond_wait(&c, &m);
+    }
+    to_return = removeRandom(q1);
+    pthread_mutex_unlock(&m);
+    return  to_return;
+}
 
 
 //int main() {

@@ -39,25 +39,34 @@ void getargs(int *port, int* threads_amount, int* queue_size, char* sched_algori
 pthread_mutex_t m;
 pthread_cond_t c_;
 Queue* requests_waiting_to_be_picked;
+Queue* requests_currently_handled;
 
 
-void* threadRoutine(void* thread_index){
-    int index = *(int*)thread_index;
+_Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beginning of this declaration
+    //TODO:  understand how to work with the process' index
+    //int index = *(int*)thread_index;
     while(1){
         pthread_mutex_lock(&m);
-        while(requests_waiting_to_be_picked->num_of_elements == 0){
+        while(requests_waiting_to_be_picked->num_of_elements == 0){ //there is no request to handle
             pthread_cond_wait(&c_,&m);
         }
         //now there is a task to handle
-        Node* request_to_handle =
-    }
+        Node* request_to_handle = requests_waiting_to_be_picked->head;
+        dequeueHead(requests_waiting_to_be_picked);
+        int fd_req_to_handle = request_to_handle->fd;
+        enqueue(requests_currently_handled,fd_req_to_handle);
 
+        //handle the request
+        pthread_mutex_unlock(&m);
+        requestHandle(fd_req_to_handle);
+        close(fd_req_to_handle);
+    }
 }
 
 void policy_block(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                   int* queue_size, int* request){
     if (requests_waiting_to_be_picked->num_of_elements +
-        requests_currently_handled->num_of_elements == *queue_size)
+        requests_currently_handled->num_of_elements == (*queue_size))
     {
         // Do nothing
         ;
@@ -69,17 +78,26 @@ void policy_block(Queue* requests_waiting_to_be_picked, Queue* requests_currentl
 
 void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                       int* queue_size, int* request){
-    requests_currently_handled->dequeue();
-    requests_waiting_to_be_picked->enqueue(request);
+    dequeueTail(requests_currently_handled);
+    enqueue(requests_waiting_to_be_picked, request);
 }
 
 void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                       int* queue_size, int* request){
+    dequeueHead(requests_waiting_to_be_picked);
 
 }
 
 
+void policy_drop_random(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
+                      int* queue_size, int* request)
+    {
+    int fifty_precent = ((*queue_size) /2) ;
+    for (int i = 0; i < fifty_precent; ++i) {
+        dequeueRandom(requests_waiting_to_be_picked);
+    }
 
+}
 
 int main(int argc, char *argv[])
 {
@@ -91,7 +109,6 @@ int main(int argc, char *argv[])
     //create the requests queue
     //requests_waiting_to_be_picked = malloc(sizeof(Queue));
     // requests_currently_handled = malloc(sizeof(Queue));
-    Queue* requests_currently_handled;
 
     initQueue(requests_waiting_to_be_picked);
     initQueue(requests_currently_handled);
