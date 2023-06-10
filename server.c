@@ -82,16 +82,22 @@ void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_curr
                       int* queue_size, int* request){
     // TODO this policy isnt good I think
     dequeueTail(requests_currently_handled);
-    enqueue(requests_waiting_to_be_picked, request);
     return;
 }
 
 void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                       int* queue_size, int* request){
+    dequeueHead(requests_currently_handled);
+    return;
+
+}
+
+void policy_block_flush(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
+                       int* queue_size, int* request){
 
     if (requests_currently_handled->num_of_elements != 0)
     {
-            return;
+        return;
     }
     else {
         //// TODO the case where waiting is full and handle isn't cover here, what should we do , or maybe
@@ -163,6 +169,7 @@ int main(int argc, char *argv[])
         // Save the relevant info in a buffer and have one of the worker threads
         // do the work.
         //
+
         if(requests_currently_handled->num_of_elements >= queue_size){
             //need to activate the relavant overload handling policy
             if(strcmp(sched_algorithm,"block") == 0){
@@ -175,7 +182,7 @@ int main(int argc, char *argv[])
                 policy_drop_head(requests_waiting_to_be_picked,requests_currently_handled,&queue_size, &connfd);
             }
             else if(strcmp(sched_algorithm,"bf") == 0){
-
+                policy_block_flush(requests_waiting_to_be_picked,requests_currently_handled, &queue_size, &connfd);
             }
             else if(strcmp(sched_algorithm,"dynamic") == 0){
                 policy_dynamic(requests_waiting_to_be_picked,requests_currently_handled,&queue_size, &connfd, max_size);
@@ -187,7 +194,10 @@ int main(int argc, char *argv[])
                 printf("error while choosing the overload policy\n");
             }
         }
-
+        if(connfd != FD_IS_NOT_VALID){
+            enqueue(requests_waiting_to_be_picked,connfd);
+        }
+        //TODO: make sure that the mutex is lock and unlock properly in the enqueue function
         requestHandle(connfd);
         Close(connfd);
     }
