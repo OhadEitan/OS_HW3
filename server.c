@@ -18,11 +18,30 @@
 // Most of the work is done within routines written in request.c
 //
 
-%ld.%06ld
+typedef struct {
+    int** static_requests_counter;
+    int** dynamic_requests_counter;
+    int** total_requests_counter;
+}Counter_statistic;
+
+// Initialize Counter_stat
+void initCounterStatistic(Counter_statistic * detail , int size) {
+    detail->static_requests_counter = malloc (sizeof(int) * size);
+    detail->dynamic_requests_counter = malloc (sizeof(int)* size);
+    detail->total_requests_counter = malloc (sizeof(int)* size);
+
+    for (int i=0; i<size ; i++)
+    {
+        detail->total_requests_counter[i] = 0;
+        detail->dynamic_requests_counter[i] = 0;
+        detail->static_requests_counter[i] = 0;
+
+    }
+}
 
 
 
-// HW3: Parse the new arguments too
+//HW3: Parse the new arguments too
 void getargs(int *port, int* threads_amount, int* queue_size, char* sched_algorithm, int* max_size, int argc, char *argv[])
 {
     if (argc < 2) {
@@ -42,15 +61,15 @@ pthread_mutex_t m;
 pthread_cond_t c_;
 Queue* requests_waiting_to_be_picked;
 Queue* requests_currently_handled;
-int* static_requests_counter;
-int* dynamic_requests_counter;
-int* total_requests_counter;
+Counter_statistic* counter_statistics;
+
 
 
 
 _Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beginning of this declaration
     //TODO:  understand how to work with the process' index
     int index_of_thread = *(int*)thread_index;
+    struct timeval handle_time, clock;
     while(1){
         pthread_mutex_lock(&m);
         while(requests_waiting_to_be_picked->num_of_elements == 0){ //there is no request to handle
@@ -58,13 +77,13 @@ _Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn 
         }
         //now there is a task to handle
         Node* request_to_handle = requests_waiting_to_be_picked->head;
-        struct timeval clock = request_to_handle->time;
+        clock = request_to_handle->time;
         dequeueHead(requests_waiting_to_be_picked);
         int fd_req_to_handle = request_to_handle->fd;
         if(fd_req_to_handle != FD_IS_NOT_VALID){
             enqueue(requests_currently_handled,fd_req_to_handle,clock);
+            gettimeofday(&handle_time,NULL);
         }
-
         //handle the request
         pthread_mutex_unlock(&m);
         requestHandle(fd_req_to_handle,index_of_thread);
@@ -146,7 +165,7 @@ int main(int argc, char *argv[])
     struct sockaddr_in clientaddr;
     char sched_algorithm[SIZE_OF_SCHED_ALG];
     getargs(&port,&threads_amount, &queue_size, sched_algorithm, &max_size, argc, argv);
-
+    initCounterStatistic(counter_statistics,threads_amount);
     //create the requests queue
     //requests_waiting_to_be_picked = malloc(sizeof(Queue));
     // requests_currently_handled = malloc(sizeof(Queue));
