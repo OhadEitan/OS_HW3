@@ -102,65 +102,71 @@ void policy_block(Queue* requests_waiting_to_be_picked, Queue* requests_currentl
                   int* queue_size, int* request)
 {
     // Do nothing
-    close(*request);
-    (*request) = FD_IS_NOT_VALID;
-    return;
+    while (requests_waiting_to_be_picked->num_of_elements +
+     requests_currently_handled->num_of_elements == queue_size)
+    {
+        pthread_cond_wait(&c, &m);
+    }
 }
 
 void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
-                      int* queue_size, int* request){
+                      int* queue_size, int* request) {
     // TODO this policy isnt good I think
-    close(dequeueTail(requests_currently_handled));
-    return;
+    if (requests_waiting_to_be_picked->num_of_elements +
+        requests_currently_handled->num_of_elements == queue_size) {
+        close(dequeueTail(requests_currently_handled));
+    }
 }
 
 void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
-                      int* queue_size, int* request){
-    close(dequeueHead(requests_currently_handled));
-    return;
-
+                      int* queue_size, int* request)
+{
+    if (requests_waiting_to_be_picked->num_of_elements +
+        requests_currently_handled->num_of_elements == queue_size) {
+        close(dequeueHead(requests_currently_handled));
+    }
 }
 
 void policy_block_flush(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                        int* queue_size, int* request){
-
-    if (requests_currently_handled->num_of_elements != 0)
+    while ((requests_waiting_to_be_picked->num_of_elements +
+           requests_currently_handled->num_of_elements == queue_size)
+           && (requests_currently_handled->num_of_elements != 0))
     {
-        return;
+        pthread_cond_wait(&c, &m);
     }
-    else {
-        //// TODO the case where waiting is full and handle isn't cover here, what should we do , or maybe
-        //// the implementation of this case is in handle function
-    }
+    close(*request);
+    (*request) = FD_IS_NOT_VALID;
 }
 
 void policy_dynamic(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
-                        int* queue_size, int* request, int max_size)
-{
-    if ((*queue_size) == max_size)
-    {
-        policy_drop_tail(&requests_waiting_to_be_picked, &requests_currently_handled, &queue_size, &request);
-        return;
-    }
-    else
-    {
-        (*queue_size)++;
-        close(*request);
-        (*request) = FD_IS_NOT_VALID;
-        return;
-
+                        int* queue_size, int* request, int max_size) {
+    if (requests_waiting_to_be_picked->num_of_elements +
+        requests_currently_handled->num_of_elements == queue_size) {
+        if ((*queue_size) == max_size) {
+            policy_drop_tail(&requests_waiting_to_be_picked, &requests_currently_handled, &queue_size, &request);
+            return;
+        }
+        else {
+            (*queue_size)++;
+            close(*request);
+            (*request) = FD_IS_NOT_VALID;
+            return;
+        }
     }
 }
 
 void policy_drop_random(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                         int* queue_size, int* request)
 {
-    int fifty_precent = ((*queue_size) / 2);
-    for (int i = 0; i < fifty_precent; ++i) {
-        close(dequeueRandom(requests_waiting_to_be_picked));
+    int fifty_percent;
+    if (requests_waiting_to_be_picked->num_of_elements +
+        requests_currently_handled->num_of_elements == queue_size) {
+        fifty_percent = ((*queue_size) / 2);
+        for (int i = 0; i < fifty_percent; ++i) {
+            close(dequeueRandom(requests_waiting_to_be_picked));
+        }
     }
-    //TODO should I should entere the new request now or just drop 50%
-    return;
 }
 
 int main(int argc, char *argv[])
@@ -196,7 +202,7 @@ int main(int argc, char *argv[])
         // Save the relevant info in a buffer and have one of the worker threads
         // do the work.
         //
-
+        pthread_mutex_lock(&m);
         if(requests_currently_handled->num_of_elements >= queue_size){
             //need to activate the relavant overload handling policy
             if(strcmp(sched_algorithm,"block") == 0){
@@ -224,6 +230,8 @@ int main(int argc, char *argv[])
         if(connfd != FD_IS_NOT_VALID){
             enqueue(requests_waiting_to_be_picked,connfd,date_request);
         }
+        pthread_cond_signal(&c);
+        pthread_mutex_unlock(&m);
         //TODO: make sure that the mutex is lock and unlock properly in the enqueue function
        // requestHandle(connfd); //the handling is in the threads routine - make sure it works
         //Close(connfd);
