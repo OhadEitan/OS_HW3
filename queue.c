@@ -1,4 +1,5 @@
-
+#ifndef QUEUE_C
+#define QUEUE_C
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -125,7 +126,7 @@ void display(Queue *q1) {
     Node *temp = q1->head;
     while (temp != NULL) {
         printf(" fd is: %d\n", temp->fd);
-        printf(" time of request is: %lu.%06lu\r\n", temp->time);
+        printf(" time of request is: %lu.%06lu\r\n", (temp->time).tv_sec,(temp->time).tv_sec);
         temp = temp->next;
     }
     printf("\n num of elelm is :%d \n", q1->num_of_elements);
@@ -242,4 +243,4 @@ int dequeueRandom(Queue *q1) {
 //}
 
 
-
+#endif

@@ -1,6 +1,9 @@
+#ifndef SERVER_C
+#define SERVER_C
+
+#include "queue.c"
 #include "segel.h"
 #include "request.h"
-#include "queue.c"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -62,6 +65,9 @@ pthread_mutex_t m;
 pthread_cond_t c_;
 Queue* requests_waiting_to_be_picked;
 Queue* requests_currently_handled;
+initQueue(requests_waiting_to_be_picked);
+initQueue(requests_currently_handled);
+
 Counter_statistic* counter_statistics;
 
 
@@ -103,7 +109,7 @@ void policy_block(Queue* requests_waiting_to_be_picked, Queue* requests_currentl
 {
     // Do nothing
     while (requests_waiting_to_be_picked->num_of_elements +
-     requests_currently_handled->num_of_elements == queue_size)
+           requests_currently_handled->num_of_elements == *queue_size)
     {
         pthread_cond_wait(&c, &m);
     }
@@ -113,7 +119,7 @@ void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_curr
                       int* queue_size, int* request) {
     // TODO this policy isnt good I think
     if (requests_waiting_to_be_picked->num_of_elements +
-        requests_currently_handled->num_of_elements == queue_size) {
+        requests_currently_handled->num_of_elements == *queue_size) {
         close(dequeueTail(requests_currently_handled));
     }
 }
@@ -122,15 +128,15 @@ void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_curr
                       int* queue_size, int* request)
 {
     if (requests_waiting_to_be_picked->num_of_elements +
-        requests_currently_handled->num_of_elements == queue_size) {
+        requests_currently_handled->num_of_elements == *queue_size) {
         close(dequeueHead(requests_currently_handled));
     }
 }
 
 void policy_block_flush(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
-                       int* queue_size, int* request){
+                        int* queue_size, int* request){
     while ((requests_waiting_to_be_picked->num_of_elements +
-           requests_currently_handled->num_of_elements == queue_size)
+            requests_currently_handled->num_of_elements == *queue_size)
            && (requests_currently_handled->num_of_elements != 0))
     {
         pthread_cond_wait(&c, &m);
@@ -140,11 +146,11 @@ void policy_block_flush(Queue* requests_waiting_to_be_picked, Queue* requests_cu
 }
 
 void policy_dynamic(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
-                        int* queue_size, int* request, int max_size) {
+                    int* queue_size, int* request, int max_size) {
     if (requests_waiting_to_be_picked->num_of_elements +
-        requests_currently_handled->num_of_elements == queue_size) {
+        requests_currently_handled->num_of_elements == *queue_size) {
         if ((*queue_size) == max_size) {
-            policy_drop_tail(&requests_waiting_to_be_picked, &requests_currently_handled, &queue_size, &request);
+            policy_drop_tail(requests_waiting_to_be_picked, requests_currently_handled, queue_size, request);
             return;
         }
         else {
@@ -161,7 +167,7 @@ void policy_drop_random(Queue* requests_waiting_to_be_picked, Queue* requests_cu
 {
     int fifty_percent;
     if (requests_waiting_to_be_picked->num_of_elements +
-        requests_currently_handled->num_of_elements == queue_size) {
+        requests_currently_handled->num_of_elements == *queue_size) {
         fifty_percent = ((*queue_size) / 2);
         for (int i = 0; i < fifty_percent; ++i) {
             close(dequeueRandom(requests_waiting_to_be_picked));
@@ -178,8 +184,8 @@ int main(int argc, char *argv[])
 
     //inits
     initCounterStatistic(counter_statistics,threads_amount);
-    initQueue(requests_waiting_to_be_picked);
-    initQueue(requests_currently_handled);
+    // initQueue(requests_waiting_to_be_picked);
+    // initQueue(requests_currently_handled);
     pthread_mutex_init(&m,NULL);
 
 
@@ -233,14 +239,11 @@ int main(int argc, char *argv[])
         pthread_cond_signal(&c);
         pthread_mutex_unlock(&m);
         //TODO: make sure that the mutex is lock and unlock properly in the enqueue function
-       // requestHandle(connfd); //the handling is in the threads routine - make sure it works
+        // requestHandle(connfd); //the handling is in the threads routine - make sure it works
         //Close(connfd);
     }
 
 }
 
 
-    
-
-
- 
+#endif
