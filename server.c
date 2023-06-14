@@ -18,6 +18,7 @@
 // Most of the work is done within routines written in request.c
 //
 
+%ld.%06ld
 
 
 
@@ -41,11 +42,15 @@ pthread_mutex_t m;
 pthread_cond_t c_;
 Queue* requests_waiting_to_be_picked;
 Queue* requests_currently_handled;
+int* static_requests_counter;
+int* dynamic_requests_counter;
+int* total_requests_counter;
+
 
 
 _Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beginning of this declaration
     //TODO:  understand how to work with the process' index
-    //int index = *(int*)thread_index;
+    int index_of_thread = *(int*)thread_index;
     while(1){
         pthread_mutex_lock(&m);
         while(requests_waiting_to_be_picked->num_of_elements == 0){ //there is no request to handle
@@ -53,15 +58,16 @@ _Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn 
         }
         //now there is a task to handle
         Node* request_to_handle = requests_waiting_to_be_picked->head;
+        struct timeval clock = request_to_handle->time;
         dequeueHead(requests_waiting_to_be_picked);
         int fd_req_to_handle = request_to_handle->fd;
         if(fd_req_to_handle != FD_IS_NOT_VALID){
-            enqueue(requests_currently_handled,fd_req_to_handle);
+            enqueue(requests_currently_handled,fd_req_to_handle,clock);
         }
 
         //handle the request
         pthread_mutex_unlock(&m);
-        requestHandle(fd_req_to_handle);
+        requestHandle(fd_req_to_handle,index_of_thread);
         close(fd_req_to_handle);
 
         //request handling is finished
@@ -75,6 +81,7 @@ void policy_block(Queue* requests_waiting_to_be_picked, Queue* requests_currentl
                   int* queue_size, int* request)
 {
     // Do nothing
+    (*request) = FD_IS_NOT_VALID;
     return;
 }
 
@@ -122,7 +129,6 @@ void policy_dynamic(Queue* requests_waiting_to_be_picked, Queue* requests_curren
     }
 }
 
-
 void policy_drop_random(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                         int* queue_size, int* request)
 {
@@ -131,8 +137,7 @@ void policy_drop_random(Queue* requests_waiting_to_be_picked, Queue* requests_cu
         dequeueRandom(requests_waiting_to_be_picked);
     }
     //TODO should I should entere the new request now or just drop 50%
-    return;
-    }
+    return
 }
 
 int main(int argc, char *argv[])
@@ -163,7 +168,8 @@ int main(int argc, char *argv[])
     while (1) {
         clientlen = sizeof(clientaddr);
         connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
-
+        struct timeval date_request;
+        gettimeofday(&date_request,NULL);
         //
         // HW3: In general, don't handle the request in the main thread.
         // Save the relevant info in a buffer and have one of the worker threads
@@ -195,7 +201,7 @@ int main(int argc, char *argv[])
             }
         }
         if(connfd != FD_IS_NOT_VALID){
-            enqueue(requests_waiting_to_be_picked,connfd);
+            enqueue(requests_waiting_to_be_picked,connfd,date_request);
         }
         //TODO: make sure that the mutex is lock and unlock properly in the enqueue function
         requestHandle(connfd);

@@ -3,14 +3,15 @@
 #include <stdlib.h>
 #include <stdbool.h>
 #include <pthread.h>
+#include <sys/time.h>
 
 pthread_cond_t c; // like in tutorial
 pthread_mutex_t m; // like in tutorial
 
 typedef struct node {
     int fd;
+    struct timeval time; // when did request got in server
     struct node *next;
-    // struct timeval time;
 
 } Node;
 
@@ -30,9 +31,10 @@ void initQueue(Queue* q1) {
 
 
 // insert node
-void insertToQueue(Queue *q1, int new_elem) {
+void insertToQueue(Queue *q1, int new_elem, struct timeval clock) {
     Node *new_node = malloc(sizeof(Node));
     new_node->fd = new_elem;
+    new_node->time = clock;
     new_node->next = NULL;
 
     if (q1->num_of_elements == 0)
@@ -121,7 +123,8 @@ int removeRandom(Queue *q1) {
 void display(Queue *q1) {
     Node *temp = q1->head;
     while (temp != NULL) {
-        printf("%d ", temp->fd);
+        printf(" fd is: %d\n", temp->fd);
+        printf(" time of request is: %lu.%06lu\r\n", temp->time);
         temp = temp->next;
     }
     printf("\n num of elelm is :%d \n", q1->num_of_elements);
@@ -186,10 +189,10 @@ void deleteQueue(Queue *q1) {
 
 
 
-void enqueue(Queue *q1, int new_elem) {
+void enqueue(Queue *q1, int new_elem, struct  timeval clock) {
     pthread_mutex_lock(&m);
     //add x to tail
-    insertToQueue(q1,new_elem);
+    insertToQueue(q1,new_elem, clock);
     pthread_cond_signal(&c);
     pthread_mutex_unlock(&m);
 }
