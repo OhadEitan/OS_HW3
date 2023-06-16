@@ -34,6 +34,10 @@ void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longm
     sprintf(buf, "Content-Length: %lu\r\n\r\n", strlen(body));
 
     //---------------------statistics----------------------------
+    sprintf(buf, "%sStat-Req-Arrival:: %lu.%06lu\r\n",buf,
+            (counter_statistics->arrival_time[curr_thread_index]).tv_sec,(counter_statistics->arrival_time[curr_thread_index]).tv_usec);
+    sprintf(buf, "%sStat-Req-Dispatch:: %lu.%06lu\r\n", buf,
+            (counter_statistics->wait_time[curr_thread_index]).tv_sec,(counter_statistics->wait_time[curr_thread_index]).tv_usec);
     sprintf(buf,"%sStat-Thread-Id:: %d\r\n", buf,curr_thread_index);
     sprintf(buf, "%sStat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
                                                     + counter_statistics->dynamic_requests_counter[curr_thread_index]);
@@ -123,6 +127,10 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs, int curr_thread_
     sprintf(buf, "%sServer: OS-HW3 Web Server\r\n", buf);
 
     //---------------------statistics----------------------------
+    sprintf(buf, "%sStat-Req-Arrival:: %lu.%06lu\r\n",buf,
+            (counter_statistics->arrival_time[curr_thread_index]).tv_sec,(counter_statistics->arrival_time[curr_thread_index]).tv_usec);
+    sprintf(buf, "%sStat-Req-Dispatch:: %lu.%06lu\r\n", buf,
+            (counter_statistics->wait_time[curr_thread_index]).tv_sec,(counter_statistics->wait_time[curr_thread_index]).tv_usec);
     sprintf(buf,"%sStat-Thread-Id:: %d\r\n", buf,curr_thread_index);
     sprintf(buf, "%sStat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
                                                     + counter_statistics->dynamic_requests_counter[curr_thread_index]);
@@ -163,7 +171,10 @@ void requestServeStatic(int fd, char *filename, int filesize, int curr_thread_in
     sprintf(buf, "%sContent-Type: %s\r\n\r\n", buf, filetype);
 
     //---------------------statistics----------------------------
-
+    sprintf(buf, "%sStat-Req-Arrival:: %lu.%06lu\r\n",buf,
+            (counter_statistics->arrival_time[curr_thread_index]).tv_sec,(counter_statistics->arrival_time[curr_thread_index]).tv_usec);
+    sprintf(buf, "%sStat-Req-Dispatch:: %lu.%06lu\r\n", buf,
+            (counter_statistics->wait_time[curr_thread_index]).tv_sec,(counter_statistics->wait_time[curr_thread_index]).tv_usec);
     sprintf(buf,"%sStat-Thread-Id:: %d\r\n", buf,curr_thread_index);
     sprintf(buf, "%sStat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
                                                     + counter_statistics->dynamic_requests_counter[curr_thread_index]);

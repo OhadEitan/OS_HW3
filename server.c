@@ -74,6 +74,7 @@ _Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn 
         //now there is a task to handle
         Node* request_to_handle = requests_waiting_to_be_picked->head;
         clock = request_to_handle->time;
+        counter_statistics->arrival_time[index_of_thread] = clock;
         dequeueHead(requests_waiting_to_be_picked);
         int fd_req_to_handle = request_to_handle->fd;
         if(fd_req_to_handle != FD_IS_NOT_VALID){
