@@ -10,6 +10,7 @@ void initCounterStatistic(Counter_statistic* detail, int size) {
     detail->dynamic_requests_counter = malloc(sizeof(int) * size);
     detail->wait_time = malloc(sizeof(struct timeval) * size);
     detail->arrival_time = malloc(sizeof(struct timeval) * size);
+   
 
     for (int i = 0; i < size; i++) {
         detail->dynamic_requests_counter[i] = 0;
@@ -17,6 +18,7 @@ void initCounterStatistic(Counter_statistic* detail, int size) {
         detail->wait_time[i] = (struct timeval){0};
         detail->arrival_time[i] = (struct timeval){0};
     }
+    
 }
 
 #endif

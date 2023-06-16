@@ -10,4 +10,6 @@ typedef struct {
     struct timeval* arrival_time;
 } Counter_statistic;
 
+void initCounterStatistic(Counter_statistic* detail, int size);
+
 #endif

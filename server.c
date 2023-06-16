@@ -9,7 +9,7 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include "counter_statistic.h"
-//#include <sys/time.h>
+#include <sys/time.h>
 
 
 #define SIZE_OF_SCHED_ALG 7
@@ -25,18 +25,7 @@
 //
 
 // Initialize Counter_stat
-void initCounterStatistic(Counter_statistic * detail , int size) {
-    detail->static_requests_counter = malloc (sizeof(int) * size);
-    detail->dynamic_requests_counter = malloc (sizeof(int)* size);
-    detail->wait_time = malloc(size * sizeof(struct timeval));
 
-    for (int i=0; i<size ; i++)
-    {
-        detail->dynamic_requests_counter[i] = 0;
-        detail->static_requests_counter[i] = 0;
-        detail->wait_time[i] = (struct timeval){ 0 };
-    }
-}
 
 //HW3: Parse the new arguments too
 void getargs(int *port, int* threads_amount, int* queue_size, char* sched_algorithm, int* max_size, int argc, char *argv[])
@@ -49,9 +38,11 @@ void getargs(int *port, int* threads_amount, int* queue_size, char* sched_algori
     *threads_amount = atoi(argv[2]);
     *queue_size = atoi(argv[3]);
     strcpy(sched_algorithm,argv[4]);
-    if(argc > 4) { //only in the case of dynamic sched algorithm
+    if(argc == 6) { //only in the case of dynamic sched algorithm
         *max_size = atoi(argv[5]);
     }
+    
+    //TODO: what to do if the num of args is more that 6
 }
 
 extern pthread_mutex_t m;
@@ -61,22 +52,27 @@ Queue* requests_currently_handled;
 Counter_statistic* counter_statistics;
 
 
-
-_Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beginning of this declaration
+void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beginning of this declaration
     //TODO:  understand how to work with the process' index
+    printf("inside routine\n");
     int index_of_thread = *(int*)thread_index;
     struct timeval handle_time, clock, wait_time;
     while(1){
         pthread_mutex_lock(&m);
         while(requests_waiting_to_be_picked->num_of_elements == 0){ //there is no request to handle
             pthread_cond_wait(&c,&m);
+            printf("num of elements: %d\n" , requests_waiting_to_be_picked->num_of_elements);
         }
+        printf("outside the while - num of elements is not 0\n"); 
         //now there is a task to handle
         Node* request_to_handle = requests_waiting_to_be_picked->head;
+        printf("--------1----------\n");
         clock = request_to_handle->time;
-        counter_statistics->arrival_time[index_of_thread] = clock;
-        dequeueHead(requests_waiting_to_be_picked);
         int fd_req_to_handle = request_to_handle->fd;
+        counter_statistics->arrival_time[index_of_thread] = clock;
+        printf("--------2----------\n");
+        dequeueHead(requests_waiting_to_be_picked);
+        printf("after dequeue from requests_waiting_to_be_picked:\n");
         if(fd_req_to_handle != FD_IS_NOT_VALID){
             enqueue(requests_currently_handled,fd_req_to_handle,clock);
             gettimeofday(&handle_time,NULL);
@@ -84,9 +80,11 @@ _Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn 
         timersub(&handle_time, &clock, &wait_time);
         counter_statistics->wait_time[index_of_thread] = wait_time;
         //handle the request
+        printf("handling the request:\n");
         pthread_mutex_unlock(&m);
         requestHandle(fd_req_to_handle,index_of_thread);
         close(fd_req_to_handle);
+        printf("after handling the request:\n");
 
         //request handling is finished
         pthread_mutex_lock(&m);
@@ -109,8 +107,11 @@ void policy_block(Queue* requests_waiting_to_be_picked, Queue* requests_currentl
 void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                       int* queue_size, int* request) {
     // TODO this policy isnt good I think
+    printf("entered drop tail policy\n");
+
     if (requests_waiting_to_be_picked->num_of_elements +
         requests_currently_handled->num_of_elements == *queue_size) {
+        printf("inside drop tail if \n");
         close(dequeueTail(requests_currently_handled));
     }
 }
@@ -169,37 +170,48 @@ void policy_drop_random(Queue* requests_waiting_to_be_picked, Queue* requests_cu
 int main(int argc, char *argv[])
 {
     int listenfd, connfd, port, clientlen, threads_amount,queue_size,max_size;
+    max_size = 0;
     struct sockaddr_in clientaddr;
     char sched_algorithm[SIZE_OF_SCHED_ALG];
     getargs(&port,&threads_amount, &queue_size, sched_algorithm, &max_size, argc, argv);
 
     //inits
+    
+    counter_statistics = malloc(sizeof(Counter_statistic));
+    requests_waiting_to_be_picked = malloc(sizeof(Queue));
+    requests_currently_handled = malloc(sizeof(Queue));
+
     initCounterStatistic(counter_statistics,threads_amount);
     initQueue(requests_waiting_to_be_picked);
     initQueue(requests_currently_handled);
     pthread_mutex_init(&m,NULL);
+    pthread_cond_init(&c,NULL);
+    
+     
 
 
     //
     // HW3: Create some threads...
     //
+    
+    
     pthread_t* threads = malloc(sizeof (pthread_t) * threads_amount);
     for(int i=0;i<threads_amount;i++){
         pthread_create(&threads[i],NULL,threadRoutine,&i);
     }
+    
 
     listenfd = Open_listenfd(port);
     while (1) {
         clientlen = sizeof(clientaddr);
+        
         connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
         struct timeval date_request;
         gettimeofday(&date_request,NULL);
-        //
-        // HW3: In general, don't handle the request in the main thread.
-        // Save the relevant info in a buffer and have one of the worker threads
-        // do the work.
-        //
+
+        
         pthread_mutex_lock(&m);
+
         if(requests_currently_handled->num_of_elements >= queue_size){
             //need to activate the relavant overload handling policy
             if(strcmp(sched_algorithm,"block") == 0){
@@ -224,11 +236,24 @@ int main(int argc, char *argv[])
                 printf("error while choosing the overload policy\n");
             }
         }
+        printf("before entering to enqueue\n");
         if(connfd != FD_IS_NOT_VALID){
+            printf("connfd is: %d\n" , connfd);
             enqueue(requests_waiting_to_be_picked,connfd,date_request);
+            printf("after enqueue\n");
+            
+            printf("--------PRINT QUEUES---------\n");
+            printf("print requests_waiting_to_be_picked:\n");
+            display(requests_waiting_to_be_picked);
+            printf("print requests_currently_handled:\n");
+            display(requests_currently_handled);
+
         }
+
         pthread_cond_signal(&c);
         pthread_mutex_unlock(&m);
+
+        
         //TODO: make sure that the mutex is lock and unlock properly in the enqueue function
         // requestHandle(connfd); //the handling is in the threads routine - make sure it works
         //Close(connfd);

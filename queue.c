@@ -115,7 +115,7 @@ void display(Queue *q1) {
         temp = temp->next;
     }
     printf("\n num of elelm is :%d \n", q1->num_of_elements);
-    printf("I love U Ohad\n");
+    printf("I love U Ohad\n\n");
 }
 
 
@@ -176,22 +176,26 @@ void deleteQueue(Queue *q1) {
 
 
 
-void enqueue(Queue *q1, int new_elem, struct  timeval clock) {
-    pthread_mutex_lock(&m);
+void enqueue(Queue *q1, int new_elem, struct timeval clock) {
+    //pthread_mutex_lock(&m);
     //add x to tail
     insertToQueue(q1,new_elem, clock);
-    pthread_cond_signal(&c);
-    pthread_mutex_unlock(&m);
+    //pthread_cond_signal(&c);
+    //pthread_mutex_unlock(&m);
 }
 
 int dequeueHead(Queue *q1) {
     int to_return;
-    pthread_mutex_lock(&m);
+    printf("--------inside dequeue----------\n");
+    //pthread_mutex_lock(&m);
+    printf("--------after lock----------\n");
     while (q1->num_of_elements == 0) {
+		printf("--------inside dequeue while----------\n");
         pthread_cond_wait(&c, &m);
     }
+    printf("--------before remove from queue----------\n");
     to_return = removeHeadFromQueue(q1);
-    pthread_mutex_unlock(&m);
+    //pthread_mutex_unlock(&m);
     return  to_return;
 }
 
