@@ -6,22 +6,7 @@
 #include <stdbool.h>
 #include <pthread.h>
 #include <sys/time.h>
-
-pthread_cond_t c; // like in tutorial
-pthread_mutex_t m; // like in tutorial
-
-typedef struct node {
-    int fd;
-    struct timeval time; // when did request got in server
-    struct node *next;
-
-} Node;
-
-typedef struct {
-    Node* head;
-    Node* tail;
-    int num_of_elements;
-} Queue;
+#include "queue.h"
 
 
 // Initialize queue

@@ -6,7 +6,7 @@
 #define REQUEST_C
 #include "segel.h"
 #include "request.h"
-#include "server.c"
+#include "counter_statistic.h"
 
 extern Counter_statistic* counter_statistics;
 

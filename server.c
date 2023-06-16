@@ -1,13 +1,14 @@
 #ifndef SERVER_C
 #define SERVER_C
 
-#include "queue.c"
+#include "queue.h"
 #include "segel.h"
 #include "request.h"
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <pthread.h>
+#include "counter_statistic.h"
 //#include <sys/time.h>
 
 
@@ -22,14 +23,6 @@
 // Repeatedly handles HTTP requests sent to this port number.
 // Most of the work is done within routines written in request.c
 //
-
-typedef struct {
-    int* static_requests_counter;
-    int* dynamic_requests_counter;
-    struct timeval* wait_time;
-
-
-}Counter_statistic;
 
 // Initialize Counter_stat
 void initCounterStatistic(Counter_statistic * detail , int size) {
@@ -61,13 +54,10 @@ void getargs(int *port, int* threads_amount, int* queue_size, char* sched_algori
     }
 }
 
-pthread_mutex_t m;
-pthread_cond_t c_;
+extern pthread_mutex_t m;
+extern pthread_cond_t c;
 Queue* requests_waiting_to_be_picked;
 Queue* requests_currently_handled;
-initQueue(requests_waiting_to_be_picked);
-initQueue(requests_currently_handled);
-
 Counter_statistic* counter_statistics;
 
 
@@ -79,7 +69,7 @@ _Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn 
     while(1){
         pthread_mutex_lock(&m);
         while(requests_waiting_to_be_picked->num_of_elements == 0){ //there is no request to handle
-            pthread_cond_wait(&c_,&m);
+            pthread_cond_wait(&c,&m);
         }
         //now there is a task to handle
         Node* request_to_handle = requests_waiting_to_be_picked->head;
@@ -184,8 +174,8 @@ int main(int argc, char *argv[])
 
     //inits
     initCounterStatistic(counter_statistics,threads_amount);
-    // initQueue(requests_waiting_to_be_picked);
-    // initQueue(requests_currently_handled);
+    initQueue(requests_waiting_to_be_picked);
+    initQueue(requests_currently_handled);
     pthread_mutex_init(&m,NULL);
 
 
