@@ -34,11 +34,11 @@ void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longm
     sprintf(buf, "Content-Length: %lu\r\n\r\n", strlen(body));
 
     //---------------------statistics----------------------------
-    sprintf(buf,"Stat-Thread-Id:: %d\r\n", buf,curr_thread_index);
-    sprintf(buf, "Stat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
+    sprintf(buf,"%sStat-Thread-Id:: %d\r\n", buf,curr_thread_index);
+    sprintf(buf, "%sStat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
                                                     + counter_statistics->dynamic_requests_counter[curr_thread_index]);
-    sprintf(buf, "Stat-Thread-Static:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]);
-    sprintf(buf, "Stat-Thread-Dynamic:: %d\r\n\r\n", buf, counter_statistics->dynamic_requests_counter[curr_thread_index]);
+    sprintf(buf, "%sStat-Thread-Static:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]);
+    sprintf(buf, "%sStat-Thread-Dynamic:: %d\r\n\r\n", buf, counter_statistics->dynamic_requests_counter[curr_thread_index]);
     Rio_writen(fd, buf, strlen(buf));
     printf("%s", buf);
 
@@ -123,11 +123,11 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs, int curr_thread_
     sprintf(buf, "%sServer: OS-HW3 Web Server\r\n", buf);
 
     //---------------------statistics----------------------------
-    sprintf(buf,"Stat-Thread-Id:: %d\r\n", buf,curr_thread_index);
-    sprintf(buf, "Stat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
+    sprintf(buf,"%sStat-Thread-Id:: %d\r\n", buf,curr_thread_index);
+    sprintf(buf, "%sStat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
                                                     + counter_statistics->dynamic_requests_counter[curr_thread_index]);
-    sprintf(buf, "Stat-Thread-Static:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]);
-    sprintf(buf, "Stat-Thread-Dynamic:: %d\r\n\r\n", buf, counter_statistics->dynamic_requests_counter[curr_thread_index]);
+    sprintf(buf, "%sStat-Thread-Static:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]);
+    sprintf(buf, "%sStat-Thread-Dynamic:: %d\r\n\r\n", buf, counter_statistics->dynamic_requests_counter[curr_thread_index]);
 
     Rio_writen(fd, buf, strlen(buf));
 
@@ -164,11 +164,11 @@ void requestServeStatic(int fd, char *filename, int filesize, int curr_thread_in
 
     //---------------------statistics----------------------------
 
-    sprintf(buf,"Stat-Thread-Id:: %d\r\n", buf,curr_thread_index);
-    sprintf(buf, "Stat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
+    sprintf(buf,"%sStat-Thread-Id:: %d\r\n", buf,curr_thread_index);
+    sprintf(buf, "%sStat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
                                                     + counter_statistics->dynamic_requests_counter[curr_thread_index]);
-    sprintf(buf, "Stat-Thread-Static:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]);
-    sprintf(buf, "Stat-Thread-Dynamic:: %d\r\n\r\n", buf, counter_statistics->dynamic_requests_counter[curr_thread_index]);
+    sprintf(buf, "%sStat-Thread-Static:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]);
+    sprintf(buf, "%sStat-Thread-Dynamic:: %d\r\n\r\n", buf, counter_statistics->dynamic_requests_counter[curr_thread_index]);
 
     Rio_writen(fd, buf, strlen(buf));
 
