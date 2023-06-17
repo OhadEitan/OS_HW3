@@ -31,7 +31,7 @@ void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longm
     Rio_writen(fd, buf, strlen(buf));
     printf("%s", buf);
 
-    sprintf(buf, "Content-Length: %lu\r\n\r\n", strlen(body));
+    sprintf(buf, "Content-Length: %lu\r\n", strlen(body));
 
     //---------------------statistics----------------------------
     sprintf(buf, "%sStat-Req-Arrival:: %lu.%06lu\r\n",buf,
@@ -135,20 +135,21 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs, int curr_thread_
     sprintf(buf, "%sStat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
                                                     + counter_statistics->dynamic_requests_counter[curr_thread_index]);
     sprintf(buf, "%sStat-Thread-Static:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]);
-    sprintf(buf, "%sStat-Thread-Dynamic:: %d\r\n\r\n", buf, counter_statistics->dynamic_requests_counter[curr_thread_index]);
+    sprintf(buf, "%sStat-Thread-Dynamic:: %d\r\n", buf, counter_statistics->dynamic_requests_counter[curr_thread_index]);
 
     Rio_writen(fd, buf, strlen(buf));
-
-    if (Fork() == 0) {
+    int status;
+	pid_t p = Fork();
+    if (p == 0) {
         /* Child process */
         Setenv("QUERY_STRING", cgiargs, 1);
         /* When the CGI process writes to stdout, it will instead go to the socket */
         Dup2(fd, STDOUT_FILENO);
         Execve(filename, emptylist, environ);
     }
-    Wait(NULL);
+    //Wait(NULL);
+    waitpid(p,&status,0);
 }
-
 
 void requestServeStatic(int fd, char *filename, int filesize, int curr_thread_index)
 {
@@ -168,7 +169,7 @@ void requestServeStatic(int fd, char *filename, int filesize, int curr_thread_in
     sprintf(buf, "HTTP/1.0 200 OK\r\n");
     sprintf(buf, "%sServer: OS-HW3 Web Server\r\n", buf);
     sprintf(buf, "%sContent-Length: %d\r\n", buf, filesize);
-    sprintf(buf, "%sContent-Type: %s\r\n\r\n", buf, filetype);
+    sprintf(buf, "%sContent-Type: %s\r\n", buf, filetype);
 
     //---------------------statistics----------------------------
     sprintf(buf, "%sStat-Req-Arrival:: %lu.%06lu\r\n",buf,
@@ -190,9 +191,12 @@ void requestServeStatic(int fd, char *filename, int filesize, int curr_thread_in
 }
 
 // handle a request
-void requestHandle(int fd, int thread_index)
+void requestHandle(int fd, int thread_index,struct timeval clock)
 {
-
+	struct timeval handle_time, wait_time;
+	gettimeofday(&handle_time,NULL);
+    timersub(&handle_time, &clock, &wait_time);
+    counter_statistics->wait_time[thread_index] = wait_time;
     int is_static;
     struct stat sbuf;
     char buf[MAXLINE], method[MAXLINE], uri[MAXLINE], version[MAXLINE];

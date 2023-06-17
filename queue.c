@@ -109,13 +109,15 @@ int removeRandom(Queue *q1) {
 // display
 void display(Queue *q1) {
     Node *temp = q1->head;
+    printf("***   Display function:  ***\n");
     while (temp != NULL) {
         printf(" fd is: %d\n", temp->fd);
         printf(" time of request is: %lu.%06lu\r\n", (temp->time).tv_sec,(temp->time).tv_sec);
         temp = temp->next;
     }
     printf("\n num of elelm is :%d \n", q1->num_of_elements);
-    printf("I love U Ohad\n\n");
+    printf("***   END display:  ***\n");
+
 }
 
 
@@ -216,12 +218,12 @@ int dequeueTail(Queue *q1) {
 
 int dequeueRandom(Queue *q1) {
     int to_return;
-    pthread_mutex_lock(&m);
+    //pthread_mutex_lock(&m);
     while (q1->num_of_elements == 0) {
         pthread_cond_wait(&c, &m);
     }
     to_return = removeRandom(q1);
-    pthread_mutex_unlock(&m);
+    //pthread_mutex_unlock(&m);
     return  to_return;
 }
 

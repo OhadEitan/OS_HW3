@@ -47,17 +47,19 @@ void getargs(int *port, int* threads_amount, int* queue_size, char* sched_algori
 
 extern pthread_mutex_t m;
 extern pthread_cond_t c;
+pthread_cond_t c_block;
+
 Queue* requests_waiting_to_be_picked;
 Queue* requests_currently_handled;
 Counter_statistic* counter_statistics;
 
 
-void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beginning of this declaration
+_Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beginning of this declaration
     //TODO:  understand how to work with the process' index
-    printf("inside routine\n");
+    //printf("inside routine\n");
     int index_of_thread = *(int*)thread_index;
     free(thread_index);
-    struct timeval handle_time, clock, wait_time;
+    struct timeval clock;
     while(1){
         pthread_mutex_lock(&m);
         while(requests_waiting_to_be_picked->num_of_elements == 0){ //there is no request to handle
@@ -76,20 +78,21 @@ void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beg
         //printf("after dequeue from requests_waiting_to_be_picked:\n");
         if(fd_req_to_handle != FD_IS_NOT_VALID){
             enqueue(requests_currently_handled,fd_req_to_handle,clock);
-            gettimeofday(&handle_time,NULL);
+            
         }
-        timersub(&handle_time, &clock, &wait_time);
-        counter_statistics->wait_time[index_of_thread] = wait_time;
+        
         //handle the request
         //printf("handling the request:\n");
-        pthread_mutex_unlock(&m);
-        requestHandle(fd_req_to_handle,index_of_thread);
+        //pthread_cond_signal(&c_block);
+        //pthread_mutex_unlock(&m);
+        requestHandle(fd_req_to_handle,index_of_thread,clock);
         close(fd_req_to_handle);
         //printf("after handling the request:\n");
 
         //request handling is finished
-        pthread_mutex_lock(&m);
+        //pthread_mutex_lock(&m);
         dequeueHead(requests_currently_handled); //remove the finished request
+        pthread_cond_signal(&c_block);
         pthread_mutex_unlock(&m);
     }
 }
@@ -97,22 +100,27 @@ void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beg
 void policy_block(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                   int* queue_size, int* request)
 {
-    // Do nothing
+	//printf("inside block policy\n");
     while (requests_waiting_to_be_picked->num_of_elements +
            requests_currently_handled->num_of_elements == *queue_size)
     {
-        pthread_cond_wait(&c, &m);
+		 //printf("inside while\n");
+        pthread_cond_wait(&c_block, &m); 
     }
+ //   display(requests_waiting_to_be_picked);
+  //  display(requests_currently_handled);
+   // printf("after while\n");
+   // printf("after while\n");
 }
 
 void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                       int* queue_size, int* request) {
     // TODO this policy isnt good I think
-    printf("entered drop tail policy\n");
+    //printf("entered drop tail policy\n");
 
     if (requests_waiting_to_be_picked->num_of_elements +
         requests_currently_handled->num_of_elements == *queue_size) {
-        printf("inside drop tail if \n");
+        //printf("inside drop tail if \n");
         //close(dequeueTail(requests_waiting_to_be_picked));
         close(*request);
     }
@@ -123,7 +131,7 @@ void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_curr
 {
     if (requests_waiting_to_be_picked->num_of_elements +
         requests_currently_handled->num_of_elements == *queue_size) {
-        close(dequeueHead(requests_currently_handled));
+        close(dequeueHead(requests_waiting_to_be_picked));
     }
 }
 
@@ -188,6 +196,7 @@ int main(int argc, char *argv[])
     initQueue(requests_currently_handled);
     pthread_mutex_init(&m,NULL);
     pthread_cond_init(&c,NULL);
+    pthread_cond_init(&c_block,NULL);
     
      
 
@@ -204,16 +213,14 @@ int main(int argc, char *argv[])
         pthread_create(&threads[i],NULL,threadRoutine,index);
     }
     
+	struct timeval date_request;
 
     listenfd = Open_listenfd(port);
     while (1) {
         clientlen = sizeof(clientaddr);
         
         connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
-        struct timeval date_request;
         gettimeofday(&date_request,NULL);
-
-        
         pthread_mutex_lock(&m);
 
         if(requests_currently_handled->num_of_elements >= queue_size){
@@ -246,7 +253,7 @@ int main(int argc, char *argv[])
             enqueue(requests_waiting_to_be_picked,connfd,date_request);
             //printf("after enqueue\n");
             
-           /* printf("--------PRINT QUEUES---------\n");
+            /*printf("--------PRINT QUEUES---------\n");
             printf("print requests_waiting_to_be_picked:\n");
             display(requests_waiting_to_be_picked);
             printf("print requests_currently_handled:\n");
