@@ -186,14 +186,14 @@ void enqueue(Queue *q1, int new_elem, struct timeval clock) {
 
 int dequeueHead(Queue *q1) {
     int to_return;
-    printf("--------inside dequeue----------\n");
+    //printf("--------inside dequeue----------\n");
     //pthread_mutex_lock(&m);
-    printf("--------after lock----------\n");
+    //printf("--------after lock----------\n");
     while (q1->num_of_elements == 0) {
-		printf("--------inside dequeue while----------\n");
+		//printf("--------inside dequeue while----------\n");
         pthread_cond_wait(&c, &m);
     }
-    printf("--------before remove from queue----------\n");
+    //printf("--------before remove from queue----------\n");
     to_return = removeHeadFromQueue(q1);
     //pthread_mutex_unlock(&m);
     return  to_return;
@@ -204,12 +204,12 @@ int dequeueHead(Queue *q1) {
 
 int dequeueTail(Queue *q1) {
     int to_return;
-    pthread_mutex_lock(&m);
+    //pthread_mutex_lock(&m);
     while (q1->num_of_elements == 0) {
         pthread_cond_wait(&c, &m);
     }
     to_return = removeTailFromQueue(q1);
-    pthread_mutex_unlock(&m);
+    //pthread_mutex_unlock(&m);
     return  to_return;
 }
 

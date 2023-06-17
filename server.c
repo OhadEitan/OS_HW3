@@ -56,23 +56,24 @@ void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beg
     //TODO:  understand how to work with the process' index
     printf("inside routine\n");
     int index_of_thread = *(int*)thread_index;
+    free(thread_index);
     struct timeval handle_time, clock, wait_time;
     while(1){
         pthread_mutex_lock(&m);
         while(requests_waiting_to_be_picked->num_of_elements == 0){ //there is no request to handle
             pthread_cond_wait(&c,&m);
-            printf("num of elements: %d\n" , requests_waiting_to_be_picked->num_of_elements);
+            //printf("num of elements: %d\n" , requests_waiting_to_be_picked->num_of_elements);
         }
-        printf("outside the while - num of elements is not 0\n"); 
+        //printf("outside the while - num of elements is not 0\n"); 
         //now there is a task to handle
         Node* request_to_handle = requests_waiting_to_be_picked->head;
-        printf("--------1----------\n");
+        //printf("--------1----------\n");
         clock = request_to_handle->time;
         int fd_req_to_handle = request_to_handle->fd;
         counter_statistics->arrival_time[index_of_thread] = clock;
-        printf("--------2----------\n");
+        //printf("--------2----------\n");
         dequeueHead(requests_waiting_to_be_picked);
-        printf("after dequeue from requests_waiting_to_be_picked:\n");
+        //printf("after dequeue from requests_waiting_to_be_picked:\n");
         if(fd_req_to_handle != FD_IS_NOT_VALID){
             enqueue(requests_currently_handled,fd_req_to_handle,clock);
             gettimeofday(&handle_time,NULL);
@@ -80,11 +81,11 @@ void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beg
         timersub(&handle_time, &clock, &wait_time);
         counter_statistics->wait_time[index_of_thread] = wait_time;
         //handle the request
-        printf("handling the request:\n");
+        //printf("handling the request:\n");
         pthread_mutex_unlock(&m);
         requestHandle(fd_req_to_handle,index_of_thread);
         close(fd_req_to_handle);
-        printf("after handling the request:\n");
+        //printf("after handling the request:\n");
 
         //request handling is finished
         pthread_mutex_lock(&m);
@@ -112,7 +113,8 @@ void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_curr
     if (requests_waiting_to_be_picked->num_of_elements +
         requests_currently_handled->num_of_elements == *queue_size) {
         printf("inside drop tail if \n");
-        close(dequeueTail(requests_currently_handled));
+        //close(dequeueTail(requests_waiting_to_be_picked));
+        close(*request);
     }
 }
 
@@ -197,7 +199,9 @@ int main(int argc, char *argv[])
     
     pthread_t* threads = malloc(sizeof (pthread_t) * threads_amount);
     for(int i=0;i<threads_amount;i++){
-        pthread_create(&threads[i],NULL,threadRoutine,&i);
+		int* index = malloc(sizeof(int));
+		*index = i;
+        pthread_create(&threads[i],NULL,threadRoutine,index);
     }
     
 
@@ -236,17 +240,17 @@ int main(int argc, char *argv[])
                 printf("error while choosing the overload policy\n");
             }
         }
-        printf("before entering to enqueue\n");
+        //printf("before entering to enqueue\n");
         if(connfd != FD_IS_NOT_VALID){
-            printf("connfd is: %d\n" , connfd);
+            //printf("connfd is: %d\n" , connfd);
             enqueue(requests_waiting_to_be_picked,connfd,date_request);
-            printf("after enqueue\n");
+            //printf("after enqueue\n");
             
-            printf("--------PRINT QUEUES---------\n");
+           /* printf("--------PRINT QUEUES---------\n");
             printf("print requests_waiting_to_be_picked:\n");
             display(requests_waiting_to_be_picked);
             printf("print requests_currently_handled:\n");
-            display(requests_currently_handled);
+            display(requests_currently_handled);*/
 
         }
 
