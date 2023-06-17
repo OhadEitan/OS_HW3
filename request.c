@@ -139,7 +139,8 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs, int curr_thread_
 
     Rio_writen(fd, buf, strlen(buf));
     int status;
-	pid_t p = Fork();
+	pid_t p;
+	p = Fork();
     if (p == 0) {
         /* Child process */
         Setenv("QUERY_STRING", cgiargs, 1);

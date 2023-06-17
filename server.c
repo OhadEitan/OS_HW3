@@ -54,8 +54,8 @@ Queue* requests_currently_handled;
 Counter_statistic* counter_statistics;
 
 
-_Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beginning of this declaration
-    //TODO:  understand how to work with the process' index
+void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beginning of this declaration
+    
     //printf("inside routine\n");
     int index_of_thread = *(int*)thread_index;
     free(thread_index);
@@ -78,19 +78,21 @@ _Noreturn void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn 
         //printf("after dequeue from requests_waiting_to_be_picked:\n");
         if(fd_req_to_handle != FD_IS_NOT_VALID){
             enqueue(requests_currently_handled,fd_req_to_handle,clock);
-            
+            pthread_cond_signal(&c_block);
+
         }
+        
         
         //handle the request
         //printf("handling the request:\n");
-        //pthread_cond_signal(&c_block);
-        //pthread_mutex_unlock(&m);
+        //pthread_cond_signal(&c);
+        pthread_mutex_unlock(&m);
         requestHandle(fd_req_to_handle,index_of_thread,clock);
         close(fd_req_to_handle);
         //printf("after handling the request:\n");
 
         //request handling is finished
-        //pthread_mutex_lock(&m);
+        pthread_mutex_lock(&m);
         dequeueHead(requests_currently_handled); //remove the finished request
         pthread_cond_signal(&c_block);
         pthread_mutex_unlock(&m);
@@ -104,13 +106,9 @@ void policy_block(Queue* requests_waiting_to_be_picked, Queue* requests_currentl
     while (requests_waiting_to_be_picked->num_of_elements +
            requests_currently_handled->num_of_elements == *queue_size)
     {
-		 //printf("inside while\n");
         pthread_cond_wait(&c_block, &m); 
     }
- //   display(requests_waiting_to_be_picked);
-  //  display(requests_currently_handled);
-   // printf("after while\n");
-   // printf("after while\n");
+
 }
 
 void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
@@ -118,21 +116,40 @@ void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_curr
     // TODO this policy isnt good I think
     //printf("entered drop tail policy\n");
 
-    if (requests_waiting_to_be_picked->num_of_elements +
+   /* if (requests_waiting_to_be_picked->num_of_elements +
         requests_currently_handled->num_of_elements == *queue_size) {
         //printf("inside drop tail if \n");
         //close(dequeueTail(requests_waiting_to_be_picked));
         close(*request);
-    }
+    }*/
+    close(*request);
+    pthread_mutex_unlock(&m);
 }
 
 void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                       int* queue_size, int* request)
 {
-    if (requests_waiting_to_be_picked->num_of_elements +
+   /*if (requests_waiting_to_be_picked->num_of_elements +
         requests_currently_handled->num_of_elements == *queue_size) {
         close(dequeueHead(requests_waiting_to_be_picked));
-    }
+    }*/
+    if (requests_currently_handled->num_of_elements == *queue_size)
+    {
+		// no request can be in waiting queuue, so we want take the rqequest
+		close(*request);
+		//pthread_mutex_unlock(&m);
+	}
+    else if(requests_waiting_to_be_picked->num_of_elements == 0){
+		// we have no request to throw away, so we throw what we accepted
+		close(*request);
+		//pthread_mutex_unlock(&m);
+	}
+	else{
+		// wainting has at least one elem so we throw the head 
+		int to_close = dequeueHead(requests_waiting_to_be_picked);
+		close(to_close);
+		//pthread_mutex_unlock(&m);
+	}
 }
 
 void policy_block_flush(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
@@ -149,7 +166,7 @@ void policy_block_flush(Queue* requests_waiting_to_be_picked, Queue* requests_cu
 
 void policy_dynamic(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                     int* queue_size, int* request, int max_size) {
-    if (requests_waiting_to_be_picked->num_of_elements +
+   /* if (requests_waiting_to_be_picked->num_of_elements +
         requests_currently_handled->num_of_elements == *queue_size) {
         if ((*queue_size) == max_size) {
             policy_drop_tail(requests_waiting_to_be_picked, requests_currently_handled, queue_size, request);
@@ -161,20 +178,34 @@ void policy_dynamic(Queue* requests_waiting_to_be_picked, Queue* requests_curren
             (*request) = FD_IS_NOT_VALID;
             return;
         }
-    }
+    }*/
+    if ((*queue_size) == max_size) {
+            policy_drop_tail(requests_waiting_to_be_picked, requests_currently_handled, queue_size, request);
+            return;
+        }
+        else {
+            (*queue_size)++;
+            close(*request);
+            (*request) = FD_IS_NOT_VALID;
+            return;
+        }
 }
 
 void policy_drop_random(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                         int* queue_size, int* request)
 {
     int fifty_percent;
-    if (requests_waiting_to_be_picked->num_of_elements +
+    /*if (requests_waiting_to_be_picked->num_of_elements +
         requests_currently_handled->num_of_elements == *queue_size) {
         fifty_percent = ((*queue_size) / 2);
         for (int i = 0; i < fifty_percent; ++i) {
             close(dequeueRandom(requests_waiting_to_be_picked));
         }
-    }
+    }*/
+    fifty_percent = ((*queue_size) / 2);
+        for (int i = 0; i < fifty_percent; ++i) {
+            close(dequeueRandom(requests_waiting_to_be_picked));
+        }
 }
 
 int main(int argc, char *argv[])
@@ -221,9 +252,10 @@ int main(int argc, char *argv[])
         
         connfd = Accept(listenfd, (SA *)&clientaddr, (socklen_t *) &clientlen);
         gettimeofday(&date_request,NULL);
+        
         pthread_mutex_lock(&m);
 
-        if(requests_currently_handled->num_of_elements >= queue_size){
+        if(requests_currently_handled->num_of_elements + requests_waiting_to_be_picked->num_of_elements >= queue_size){
             //need to activate the relavant overload handling policy
             if(strcmp(sched_algorithm,"block") == 0){
                 policy_block(requests_waiting_to_be_picked,requests_currently_handled, &queue_size, &connfd);
@@ -251,6 +283,8 @@ int main(int argc, char *argv[])
         if(connfd != FD_IS_NOT_VALID){
             //printf("connfd is: %d\n" , connfd);
             enqueue(requests_waiting_to_be_picked,connfd,date_request);
+            pthread_cond_signal(&c);
+
             //printf("after enqueue\n");
             
             /*printf("--------PRINT QUEUES---------\n");
