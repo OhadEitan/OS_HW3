@@ -81,15 +81,10 @@ void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beg
             pthread_cond_signal(&c_block);
 
         }
-        
-        
         //handle the request
-        //printf("handling the request:\n");
-        //pthread_cond_signal(&c);
         pthread_mutex_unlock(&m);
         requestHandle(fd_req_to_handle,index_of_thread,clock);
         close(fd_req_to_handle);
-        //printf("after handling the request:\n");
 
         //request handling is finished
         pthread_mutex_lock(&m);
@@ -129,13 +124,13 @@ void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_curr
 void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                       int* queue_size, int* request)
 {
-   if (requests_currently_handled->num_of_elements == *queue_size)
+  /* if (requests_currently_handled->num_of_elements == *queue_size)
     {
 		// no request can be in waiting queuue, so we want take the rqequest
 		close(*request);
-		//pthread_mutex_unlock(&m);
-	}
-    else if(requests_waiting_to_be_picked->num_of_elements == 0){
+		pthread_mutex_unlock(&m);
+	}*/
+    if(requests_waiting_to_be_picked->num_of_elements == 0){
 		// we have no request to throw away, so we throw what we accepted
 		close(*request);
 		pthread_mutex_unlock(&m);
@@ -143,6 +138,9 @@ void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_curr
 	else{
 		// wainting has at least one elem so we throw the head 
 		int to_close = dequeueHead(requests_waiting_to_be_picked);
+		if(to_close == -1){
+			return;
+		}
 		close(to_close);
 	}
 }
@@ -176,6 +174,10 @@ void policy_dynamic(Queue* requests_waiting_to_be_picked, Queue* requests_curren
 void policy_drop_random(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                         int* queue_size, int* request)
 {
+    if(requests_waiting_to_be_picked->num_of_elements == 0){
+        close(*request);
+        pthread_mutex_unlock(&m);
+    }
     int fifty_percent;
     fifty_percent = ((*queue_size) / 2);
         for (int i = 0; i < fifty_percent; ++i) {
@@ -237,9 +239,11 @@ int main(int argc, char *argv[])
             }
             else if(strcmp(sched_algorithm,"dt") == 0){
                 policy_drop_tail(requests_waiting_to_be_picked,requests_currently_handled,&queue_size, &connfd);
+                continue;
             }
             else if(strcmp(sched_algorithm,"dh") == 0){
                 policy_drop_head(requests_waiting_to_be_picked,requests_currently_handled,&queue_size, &connfd);
+                //continue;
             }
             else if(strcmp(sched_algorithm,"bf") == 0){
                 policy_block_flush(requests_waiting_to_be_picked,requests_currently_handled, &queue_size, &connfd);
@@ -249,6 +253,7 @@ int main(int argc, char *argv[])
             }
             else if(strcmp(sched_algorithm,"random") == 0){
                 policy_drop_random(requests_waiting_to_be_picked,requests_currently_handled,&queue_size, &connfd);
+                continue;
             }
             else{
                 printf("error while choosing the overload policy\n");
@@ -256,12 +261,9 @@ int main(int argc, char *argv[])
         }
         //printf("before entering to enqueue\n");
         if(connfd != FD_IS_NOT_VALID){
-            //printf("connfd is: %d\n" , connfd);
             enqueue(requests_waiting_to_be_picked,connfd,date_request);
-            pthread_cond_signal(&c);
+            //pthread_cond_signal(&c);
 
-            //printf("after enqueue\n");
-            
             /*printf("--------PRINT QUEUES---------\n");
             printf("print requests_waiting_to_be_picked:\n");
             display(requests_waiting_to_be_picked);
@@ -269,14 +271,8 @@ int main(int argc, char *argv[])
             display(requests_currently_handled);*/
 
         }
-
         pthread_cond_signal(&c);
         pthread_mutex_unlock(&m);
-
-        
-        //TODO: make sure that the mutex is lock and unlock properly in the enqueue function
-        // requestHandle(connfd); //the handling is in the threads routine - make sure it works
-        //Close(connfd);
     }
 
 }

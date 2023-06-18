@@ -48,13 +48,15 @@ int removeHeadFromQueue(Queue *q1) {
     }
     Node *temp = q1->head;
     to_return = temp->fd;
-    q1->head = q1->head->next;
-    q1->num_of_elements--;
+    q1->head = temp->next;
+  
     if (q1->head == NULL) {
         // after remove queue should be empty
         q1->tail = NULL;
     }
     free(temp);
+    q1->num_of_elements--;
+    temp = NULL;
     return to_return;
 }
 
@@ -134,50 +136,6 @@ void deleteQueue(Queue *q1) {
 }
 
 
-//bool removeByIndex(Queue* q1 , int index)
-//{
-//    if (index >= q1->num_of_elements )
-//    {
-//        return false;
-//    }
-//    if (q1->head == NULL) {
-//        return false;
-//    }
-//
-//    Node* temp = q1->head;
-//    if (index == 0) {
-//        //remove the head of Queue
-//        if(q1->num_of_elements == 1)
-//        {
-//            q1->tail = NULL;
-//        }
-//        q1->head = temp->next;
-//        free(temp);
-//        q1->num_of_elements--;
-//        return true;
-//    }
-//    for (int i= 0; i < index - 1 && temp != NULL; i++) {
-//        temp = temp->next;
-//    }
-//
-//    if (temp == NULL || temp->next == NULL) {
-//        return false;
-//    }
-//
-//    if(q1->num_of_elements - 1 == index)
-//    {
-//        q1->tail = temp;
-//    }
-//    Node* temp_next = temp->next->next;
-//    free(temp->next);
-//    q1->num_of_elements--;
-//    temp->next = temp_next;
-//    return true;
-//}
-
-
-
-
 void enqueue(Queue *q1, int new_elem, struct timeval clock) {
     //pthread_mutex_lock(&m);
     //add x to tail
@@ -188,17 +146,16 @@ void enqueue(Queue *q1, int new_elem, struct timeval clock) {
 
 int dequeueHead(Queue *q1) {
     int to_return;
-    //printf("--------inside dequeue----------\n");
     //pthread_mutex_lock(&m);
-    //printf("--------after lock----------\n");
-    while (q1->num_of_elements == 0) {
+    
+    /*while (q1->num_of_elements == 0) {
 		//printf("--------inside dequeue while----------\n");
         pthread_cond_wait(&c, &m);
-    }
+    }*/
+    
     //printf("--------before remove from queue----------\n");
     to_return = removeHeadFromQueue(q1);
-    //pthread_mutex_unlock(&m);
-    return  to_return;
+    return to_return;
 }
 
 
