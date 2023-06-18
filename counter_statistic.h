@@ -6,6 +6,7 @@
 typedef struct {
     int* static_requests_counter;
     int* dynamic_requests_counter;
+    int* errors;
     struct timeval* wait_time;
     struct timeval* arrival_time;
 } Counter_statistic;

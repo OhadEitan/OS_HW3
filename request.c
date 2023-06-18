@@ -40,7 +40,7 @@ void requestError(int fd, char *cause, char *errnum, char *shortmsg, char *longm
             (counter_statistics->wait_time[curr_thread_index]).tv_sec,(counter_statistics->wait_time[curr_thread_index]).tv_usec);
     sprintf(buf,"%sStat-Thread-Id:: %d\r\n", buf,curr_thread_index);
     sprintf(buf, "%sStat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
-                                                    + counter_statistics->dynamic_requests_counter[curr_thread_index]);
+                                                    + counter_statistics->dynamic_requests_counter[curr_thread_index] + counter_statistics->errors[curr_thread_index]);
     sprintf(buf, "%sStat-Thread-Static:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]);
     sprintf(buf, "%sStat-Thread-Dynamic:: %d\r\n\r\n", buf, counter_statistics->dynamic_requests_counter[curr_thread_index]);
     Rio_writen(fd, buf, strlen(buf));
@@ -133,7 +133,7 @@ void requestServeDynamic(int fd, char *filename, char *cgiargs, int curr_thread_
             (counter_statistics->wait_time[curr_thread_index]).tv_sec,(counter_statistics->wait_time[curr_thread_index]).tv_usec);
     sprintf(buf,"%sStat-Thread-Id:: %d\r\n", buf,curr_thread_index);
     sprintf(buf, "%sStat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
-                                                    + counter_statistics->dynamic_requests_counter[curr_thread_index]);
+                                                    + counter_statistics->dynamic_requests_counter[curr_thread_index]+ counter_statistics->errors[curr_thread_index]);
     sprintf(buf, "%sStat-Thread-Static:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]);
     sprintf(buf, "%sStat-Thread-Dynamic:: %d\r\n", buf, counter_statistics->dynamic_requests_counter[curr_thread_index]);
 
@@ -179,7 +179,7 @@ void requestServeStatic(int fd, char *filename, int filesize, int curr_thread_in
             (counter_statistics->wait_time[curr_thread_index]).tv_sec,(counter_statistics->wait_time[curr_thread_index]).tv_usec);
     sprintf(buf,"%sStat-Thread-Id:: %d\r\n", buf,curr_thread_index);
     sprintf(buf, "%sStat-Thread-Count:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]
-                                                    + counter_statistics->dynamic_requests_counter[curr_thread_index]);
+                                                    + counter_statistics->dynamic_requests_counter[curr_thread_index]+ counter_statistics->errors[curr_thread_index]);
     sprintf(buf, "%sStat-Thread-Static:: %d\r\n", buf, counter_statistics->static_requests_counter[curr_thread_index]);
     sprintf(buf, "%sStat-Thread-Dynamic:: %d\r\n\r\n", buf, counter_statistics->dynamic_requests_counter[curr_thread_index]);
 
@@ -211,6 +211,7 @@ void requestHandle(int fd, int thread_index,struct timeval clock)
     printf("%s %s %s\n", method, uri, version);
 
     if (strcasecmp(method, "GET")) {
+        counter_statistics->errors[thread_index]++;
         requestError(fd, method, "501", "Not Implemented", "OS-HW3 Server does not implement this method",thread_index);
         return;
     }
@@ -218,12 +219,14 @@ void requestHandle(int fd, int thread_index,struct timeval clock)
 
     is_static = requestParseURI(uri, filename, cgiargs);
     if (stat(filename, &sbuf) < 0) {
+        counter_statistics->errors[thread_index]++;
         requestError(fd, filename, "404", "Not found", "OS-HW3 Server could not find this file",thread_index);
         return;
     }
 
     if (is_static) {
         if (!(S_ISREG(sbuf.st_mode)) || !(S_IRUSR & sbuf.st_mode)) {
+            counter_statistics->errors[thread_index]++;
             requestError(fd, filename, "403", "Forbidden", "OS-HW3 Server could not read this file",thread_index);
             return;
         }
@@ -231,6 +234,7 @@ void requestHandle(int fd, int thread_index,struct timeval clock)
         requestServeStatic(fd, filename, sbuf.st_size,thread_index);
     } else {
         if (!(S_ISREG(sbuf.st_mode)) || !(S_IXUSR & sbuf.st_mode)) {
+            counter_statistics->errors[thread_index]++;
             requestError(fd, filename, "403", "Forbidden", "OS-HW3 Server could not run this CGI program",thread_index);
             return;
         }

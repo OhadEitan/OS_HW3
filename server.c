@@ -129,11 +129,7 @@ void policy_drop_tail(Queue* requests_waiting_to_be_picked, Queue* requests_curr
 void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                       int* queue_size, int* request)
 {
-   /*if (requests_waiting_to_be_picked->num_of_elements +
-        requests_currently_handled->num_of_elements == *queue_size) {
-        close(dequeueHead(requests_waiting_to_be_picked));
-    }*/
-    if (requests_currently_handled->num_of_elements == *queue_size)
+   if (requests_currently_handled->num_of_elements == *queue_size)
     {
 		// no request can be in waiting queuue, so we want take the rqequest
 		close(*request);
@@ -142,13 +138,12 @@ void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_curr
     else if(requests_waiting_to_be_picked->num_of_elements == 0){
 		// we have no request to throw away, so we throw what we accepted
 		close(*request);
-		//pthread_mutex_unlock(&m);
+		pthread_mutex_unlock(&m);
 	}
 	else{
 		// wainting has at least one elem so we throw the head 
 		int to_close = dequeueHead(requests_waiting_to_be_picked);
 		close(to_close);
-		//pthread_mutex_unlock(&m);
 	}
 }
 
@@ -166,19 +161,6 @@ void policy_block_flush(Queue* requests_waiting_to_be_picked, Queue* requests_cu
 
 void policy_dynamic(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                     int* queue_size, int* request, int max_size) {
-   /* if (requests_waiting_to_be_picked->num_of_elements +
-        requests_currently_handled->num_of_elements == *queue_size) {
-        if ((*queue_size) == max_size) {
-            policy_drop_tail(requests_waiting_to_be_picked, requests_currently_handled, queue_size, request);
-            return;
-        }
-        else {
-            (*queue_size)++;
-            close(*request);
-            (*request) = FD_IS_NOT_VALID;
-            return;
-        }
-    }*/
     if ((*queue_size) == max_size) {
             policy_drop_tail(requests_waiting_to_be_picked, requests_currently_handled, queue_size, request);
             return;
@@ -195,13 +177,6 @@ void policy_drop_random(Queue* requests_waiting_to_be_picked, Queue* requests_cu
                         int* queue_size, int* request)
 {
     int fifty_percent;
-    /*if (requests_waiting_to_be_picked->num_of_elements +
-        requests_currently_handled->num_of_elements == *queue_size) {
-        fifty_percent = ((*queue_size) / 2);
-        for (int i = 0; i < fifty_percent; ++i) {
-            close(dequeueRandom(requests_waiting_to_be_picked));
-        }
-    }*/
     fifty_percent = ((*queue_size) / 2);
         for (int i = 0; i < fifty_percent; ++i) {
             close(dequeueRandom(requests_waiting_to_be_picked));
