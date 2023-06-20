@@ -78,19 +78,25 @@ int removeTailFromQueue(Queue *q1) {
     free(to_delete);
     temp->next = NULL;
     q1->tail = temp;
+    q1->num_of_elements--;
     return to_return;
 }
 
 
 
-int removeRandom(Queue *q1) {
-    int to_return;
-    int random_num = rand() % (q1->num_of_elements + 1);
+int removeRandom(Queue *q1) 
+{
+	int to_return;
+    if (q1->head == NULL) {
+        // queue is empty
+        return -1;
+    }
+    int random_num = rand() % (q1->num_of_elements);
     if (0 == random_num)
     {
         return removeHeadFromQueue(q1);
     }
-    if (q1->num_of_elements == random_num)
+    if (q1->num_of_elements -1  == random_num)
     {
         return removeTailFromQueue(q1);
     }
@@ -104,8 +110,10 @@ int removeRandom(Queue *q1) {
     temp = temp->next;
     prev->next = prev->next->next;
     free(temp);
+    q1->num_of_elements--;
     return to_return;
 }
+
 
 
 // display
@@ -174,12 +182,13 @@ int dequeueTail(Queue *q1) {
 
 
 int dequeueRandom(Queue *q1) {
-    int to_return;
+   int to_return;
     //pthread_mutex_lock(&m);
     while (q1->num_of_elements == 0) {
         pthread_cond_wait(&c, &m);
     }
     to_return = removeRandom(q1);
+    
     //pthread_mutex_unlock(&m);
     return  to_return;
 }

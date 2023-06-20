@@ -78,7 +78,7 @@ void* threadRoutine(void* thread_index){ //TODO: remove the _Noreturn in the beg
         //printf("after dequeue from requests_waiting_to_be_picked:\n");
         if(fd_req_to_handle != FD_IS_NOT_VALID){
             enqueue(requests_currently_handled,fd_req_to_handle,clock);
-            pthread_cond_signal(&c_block);
+            //thread_cond_signal(&c_block);
 
         }
         //handle the request
@@ -133,7 +133,8 @@ void policy_drop_head(Queue* requests_waiting_to_be_picked, Queue* requests_curr
     if(requests_waiting_to_be_picked->num_of_elements == 0){
 		// we have no request to throw away, so we throw what we accepted
 		close(*request);
-		pthread_mutex_unlock(&m);
+		(*request) = FD_IS_NOT_VALID;
+		return;
 	}
 	else{
 		// wainting has at least one elem so we throw the head 
@@ -173,17 +174,31 @@ void policy_dynamic(Queue* requests_waiting_to_be_picked, Queue* requests_curren
 
 void policy_drop_random(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
                         int* queue_size, int* request)
-{
-    if(requests_waiting_to_be_picked->num_of_elements == 0){
-        close(*request);
-        pthread_mutex_unlock(&m);
-    }
-    int fifty_percent;
-    fifty_percent = ((*queue_size) / 2);
-        for (int i = 0; i < fifty_percent; ++i) {
-            close(dequeueRandom(requests_waiting_to_be_picked));
-        }
+{  
+    int to_close;
+    //while (requests_waiting_to_be_picked->num_of_elements == 0){
+	// pthread_cond_wait(&c, &m);
+    //}
+    if (requests_waiting_to_be_picked->num_of_elements == 0)
+    {
+		close(*request);
+		(*request) = FD_IS_NOT_VALID;
+		return;
+	}
+	int fifty_percent;
+	fifty_percent = ((requests_waiting_to_be_picked->num_of_elements + 1 ) / 2);
+	for (int i = 0; i < fifty_percent; ++i) {
+		to_close = dequeueRandom(requests_waiting_to_be_picked);
+		if(-1 == to_close)
+		{
+			;
+		}
+		else {
+			close(to_close);
+		}
+	}
 }
+
 
 int main(int argc, char *argv[])
 {
@@ -253,7 +268,6 @@ int main(int argc, char *argv[])
             }
             else if(strcmp(sched_algorithm,"random") == 0){
                 policy_drop_random(requests_waiting_to_be_picked,requests_currently_handled,&queue_size, &connfd);
-                continue;
             }
             else{
                 printf("error while choosing the overload policy\n");
