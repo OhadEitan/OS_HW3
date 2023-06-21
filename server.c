@@ -150,12 +150,10 @@ void policy_block_flush(Queue* requests_waiting_to_be_picked, Queue* requests_cu
                         int* queue_size, int* request){
     while ((requests_waiting_to_be_picked->num_of_elements +
             requests_currently_handled->num_of_elements == *queue_size)
-           && (requests_currently_handled->num_of_elements != 0))
+           || (requests_currently_handled->num_of_elements != 0))
     {
-        pthread_cond_wait(&c, &m);
+        pthread_cond_wait(&c_block,&m);
     }
-    close(*request);
-    (*request) = FD_IS_NOT_VALID;
 }
 
 void policy_dynamic(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
