@@ -154,6 +154,8 @@ void policy_block_flush(Queue* requests_waiting_to_be_picked, Queue* requests_cu
     {
         pthread_cond_wait(&c_block,&m);
     }
+    close(*request);
+    (*request) = FD_IS_NOT_VALID;
 }
 
 void policy_dynamic(Queue* requests_waiting_to_be_picked, Queue* requests_currently_handled,
